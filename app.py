@@ -48,8 +48,6 @@ sys.modules["backend_app"] = backend_app
 spec.loader.exec_module(backend_app)
 
 flask_app = backend_app.app
-model = backend_app.model
-model_loaded = backend_app.model_loaded
 
 # Initialize FastAPI
 app = FastAPI()
@@ -60,8 +58,10 @@ app.mount("/api", WSGIMiddleware(flask_app))
 # Define Gradio prediction logic using backend functions (ZeroGPU decorated)
 @spaces.GPU
 def predict_tbc(image):
-    if not model_loaded:
-        return "Model is not loaded on server. Please check startup logs.", None, None
+    # Load model dynamically inside the GPU context
+    local_model = backend_app.load_model_lazy()
+    if local_model is None:
+        return "Model could not be loaded on server. Please check startup logs.", None, None
         
     if image is None:
         return "No image provided. Please upload a chest X-ray image.", None, None
@@ -79,7 +79,7 @@ def predict_tbc(image):
         img_array = np.expand_dims(img_normalized, axis=0)
 
         # Run prediction
-        preds = model.predict(img_array)
+        preds = local_model.predict(img_array)
         raw_probability = float(preds[0][0])
 
         if raw_probability > 0.5:
@@ -91,7 +91,7 @@ def predict_tbc(image):
 
         # Import gradcam logic to generate overlays
         from gradcam import get_gradcam_heatmap
-        heatmap = get_gradcam_heatmap(img_array, model, last_conv_layer_name="conv5_block16_concat")
+        heatmap = get_gradcam_heatmap(img_array, local_model, last_conv_layer_name="conv5_block16_concat")
 
         # Resize heatmap to match the original image dimensions
         heatmap_resized = cv2.resize(heatmap, (original_w, original_h))

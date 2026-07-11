@@ -10,29 +10,38 @@ app = Flask(__name__)
 # Enable CORS for all origins (especially useful for localhost frontend / vercel deploys)
 CORS(app)
 
-# Load model on startup
+# Lazy model loading logic
 MODEL_PATH = os.path.join(os.path.dirname(__file__), "..", "model_densenet121_tbc.keras")
-print(f"Loading model from: {MODEL_PATH}")
-try:
-    model = tf.keras.models.load_model(MODEL_PATH)
-    print("Model loaded successfully.")
-    model_loaded = True
-except Exception as e:
-    print(f"Error loading model: {e}")
-    model = None
-    model_loaded = False
+model = None
+model_loaded = False
+
+def load_model_lazy():
+    global model, model_loaded
+    if model is None:
+        print(f"Loading model from: {MODEL_PATH}")
+        try:
+            model = tf.keras.models.load_model(MODEL_PATH)
+            print("Model loaded successfully.")
+            model_loaded = True
+        except Exception as e:
+            print(f"Error loading model: {e}")
+            model = None
+            model_loaded = False
+    return model
 
 @app.route('/health', methods=['GET'])
 def health():
     return jsonify({
-        "status": "ok" if model_loaded else "error",
-        "model_loaded": model_loaded
+        "status": "ok",
+        "model_loaded": model_loaded or os.path.exists(MODEL_PATH)
     })
 
 @app.route('/predict', methods=['POST'])
 def predict():
-    if not model_loaded:
-        return jsonify({"error": "Model is not loaded on server."}), 500
+    global model
+    model = load_model_lazy()
+    if model is None:
+        return jsonify({"error": "Model could not be loaded on server."}), 500
 
     if 'image' not in request.files:
         return jsonify({"error": "No image field in request."}), 400
@@ -75,8 +84,10 @@ def predict():
 
 @app.route('/predict-gradcam', methods=['POST'])
 def predict_gradcam():
-    if not model_loaded:
-        return jsonify({"error": "Model is not loaded on server."}), 500
+    global model
+    model = load_model_lazy()
+    if model is None:
+        return jsonify({"error": "Model could not be loaded on server."}), 500
 
     if 'image' not in request.files:
         return jsonify({"error": "No image field in request."}), 400
