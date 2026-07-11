@@ -40,11 +40,7 @@ spec.loader.exec_module(backend_app)
 
 flask_app = backend_app.app
 
-# Initialize FastAPI
-app = FastAPI()
-
-# Mount the Flask app on /api
-app.mount("/api", WSGIMiddleware(flask_app))
+# FastAPI app is initialized below after Gradio demo is defined
 
 # Define Gradio prediction logic using backend functions (ZeroGPU decorated)
 @spaces.GPU
@@ -127,11 +123,15 @@ with gr.Blocks(title="Deteksi TBC & Grad-CAM") as demo:
         outputs=[output_text, output_heatmap, output_overlay]
     )
 
-# Mount Gradio app to FastAPI root
-app = gr.mount_gradio_app(app, demo, path="/")
+# Initialize Gradio routes and get the FastAPI application instance
+import gradio.routes
+app = gradio.routes.App.create_app(demo)
+
+# Mount the Flask app onto the Gradio FastAPI app at /api
+app.mount("/api", WSGIMiddleware(flask_app))
+
+# Set the patched app back to demo so demo.launch() serves it
+demo.app = app
 
 if __name__ == '__main__':
-    import uvicorn
-    # Hugging Face runs python app.py, we run on port 7860
-    port = int(os.environ.get('PORT', 7860))
-    uvicorn.run(app, host="0.0.0.0", port=port)
+    demo.launch()
