@@ -1,15 +1,6 @@
 import os
 import sys
-
-# Try importing spaces (ZeroGPU wrapper). If not available, mock it locally.
-try:
-    import spaces
-except ImportError:
-    class DummySpaces:
-        def GPU(self, f):
-            return f
-    spaces = DummySpaces()
-
+import spaces
 import numpy as np
 import tensorflow as tf
 import keras
