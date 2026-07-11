@@ -1,5 +1,15 @@
 import os
 import sys
+
+# Try importing spaces (ZeroGPU wrapper). If not available, mock it locally.
+try:
+    import spaces
+except ImportError:
+    class DummySpaces:
+        def GPU(self, f):
+            return f
+    spaces = DummySpaces()
+
 import numpy as np
 import tensorflow as tf
 import cv2
@@ -29,7 +39,8 @@ app = FastAPI()
 # Mount the Flask app on /api
 app.mount("/api", WSGIMiddleware(flask_app))
 
-# Define Gradio prediction logic using backend functions
+# Define Gradio prediction logic using backend functions (ZeroGPU decorated)
+@spaces.GPU
 def predict_tbc(image):
     if not model_loaded:
         return "Model is not loaded on server. Please check startup logs.", None, None
