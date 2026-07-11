@@ -12,6 +12,12 @@ except ImportError:
 
 import numpy as np
 import tensorflow as tf
+import keras
+print("--- DEBUG INFO ---")
+print("HUGGINGFACE TENSORFLOW VERSION:", tf.__version__)
+print("HUGGINGFACE KERAS VERSION:", keras.__version__)
+print("HUGGINGFACE KERAS PATH:", keras.__file__)
+print("------------------")
 import cv2
 import gradio as gr
 from fastapi import FastAPI
