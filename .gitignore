@@ -1,0 +1,24 @@
+# Python virtual environment and caches
+backend/venv/
+backend/__pycache__/
+backend/*.pyc
+backend/.pytest_cache/
+
+# Frontend dependencies and builds
+Web_TBC/node_modules/
+Web_TBC/.next/
+Web_TBC/out/
+Web_TBC/build/
+Web_TBC/.vercel/
+Web_TBC/.clerk/
+
+# Environment variables
+.env
+.env.local
+*.env
+Web_TBC/.env*
+backend/.env*
+
+# OS files
+.DS_Store
+Thumbs.db

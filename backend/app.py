@@ -1,0 +1,102 @@
+import os
+import tensorflow as tf
+from flask import Flask, request, jsonify
+from flask_cors import CORS
+from gradcam import process_and_predict
+import numpy as np
+import cv2
+
+app = Flask(__name__)
+# Enable CORS for all origins (especially useful for localhost frontend / vercel deploys)
+CORS(app)
+
+# Load model on startup
+MODEL_PATH = os.path.join(os.path.dirname(__file__), "..", "model_densenet121_tbc.keras")
+print(f"Loading model from: {MODEL_PATH}")
+try:
+    model = tf.keras.models.load_model(MODEL_PATH)
+    print("Model loaded successfully.")
+    model_loaded = True
+except Exception as e:
+    print(f"Error loading model: {e}")
+    model = None
+    model_loaded = False
+
+@app.route('/health', methods=['GET'])
+def health():
+    return jsonify({
+        "status": "ok" if model_loaded else "error",
+        "model_loaded": model_loaded
+    })
+
+@app.route('/predict', methods=['POST'])
+def predict():
+    if not model_loaded:
+        return jsonify({"error": "Model is not loaded on server."}), 500
+
+    if 'image' not in request.files:
+        return jsonify({"error": "No image field in request."}), 400
+
+    file = request.files['image']
+    if file.filename == '':
+        return jsonify({"error": "No file selected."}), 400
+
+    try:
+        image_bytes = file.read()
+        nparr = np.frombuffer(image_bytes, np.uint8)
+        img_bgr = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+        if img_bgr is None:
+            return jsonify({"error": "Invalid image format."}), 400
+
+        # Preprocess and predict
+        img_resized = cv2.resize(img_bgr, (224, 224))
+        img_rgb = cv2.cvtColor(img_resized, cv2.COLOR_BGR2RGB)
+        img_normalized = img_rgb.astype(np.float32) / 255.0
+        img_array = np.expand_dims(img_normalized, axis=0)
+
+        preds = model.predict(img_array)
+        raw_probability = float(preds[0][0])
+
+        if raw_probability > 0.5:
+            label = "Tuberculosis"
+            confidence = raw_probability * 100.0
+        else:
+            label = "Normal"
+            confidence = (1.0 - raw_probability) * 100.0
+
+        return jsonify({
+            "label": label,
+            "confidence": round(confidence, 2),
+            "raw_probability": round(raw_probability, 4)
+        })
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/predict-gradcam', methods=['POST'])
+def predict_gradcam():
+    if not model_loaded:
+        return jsonify({"error": "Model is not loaded on server."}), 500
+
+    if 'image' not in request.files:
+        return jsonify({"error": "No image field in request."}), 400
+
+    file = request.files['image']
+    if file.filename == '':
+        return jsonify({"error": "No file selected."}), 400
+
+    try:
+        image_bytes = file.read()
+        # process_and_predict handles the full prediction and gradcam overlay logic
+        result = process_and_predict(image_bytes, model, last_conv_layer_name="conv5_block16_concat")
+        return jsonify(result)
+
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return jsonify({"error": str(e)}), 500
+
+if __name__ == '__main__':
+    # Run server on port specified by environment variable, default to 5000
+    port = int(os.environ.get('PORT', 5000))
+    app.run(host='0.0.0.0', port=port, debug=False)
