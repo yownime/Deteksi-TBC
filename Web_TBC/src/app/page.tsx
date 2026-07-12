@@ -75,13 +75,12 @@ export default function Home() {
     setError(null);
     
     try {
-      setLoadingStep("Menghubungi server klasifikasi AI (Railway)...");
-      const flaskUrl = process.env.NEXT_PUBLIC_FLASK_API_URL || "http://localhost:5000";
+      setLoadingStep("Menghubungi server klasifikasi AI (Hugging Face via Proxy)...");
       
       const formData = new FormData();
       formData.append("image", file);
 
-      const response = await fetch(`${flaskUrl}/predict-gradcam`, {
+      const response = await fetch("/api/predict-proxy", {
         method: "POST",
         body: formData,
       });
