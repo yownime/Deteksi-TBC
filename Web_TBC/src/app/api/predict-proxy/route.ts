@@ -50,7 +50,7 @@ export async function POST(req: NextRequest) {
 
     // Connect to Gradio Space
     const app = await client(spaceUrl, {
-      hf_token: (process.env.HF_ACCESS_TOKEN as `hf_${string}`) || undefined,
+      token: (process.env.HF_ACCESS_TOKEN as `hf_${string}`) || undefined,
     });
 
     console.log("Sending prediction request to Gradio endpoint /predict_tbc...");
