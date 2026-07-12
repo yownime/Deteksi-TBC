@@ -9,7 +9,11 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "No image file provided" }, { status: 400 });
     }
 
-    const flaskUrl = process.env.NEXT_PUBLIC_FLASK_API_URL || "http://localhost:5000";
+    let flaskUrl = process.env.NEXT_PUBLIC_FLASK_API_URL || "http://localhost:5000";
+    // Avoid Gradio's reserved /api route collision by switching to /flask-api
+    if (flaskUrl.endsWith("/api")) {
+      flaskUrl = flaskUrl.replace(/\/api$/, "/flask-api");
+    }
     console.log("Proxying request to Hugging Face backend:", `${flaskUrl}/predict-gradcam`);
 
     // Create a new FormData object to send to the backend
@@ -18,6 +22,8 @@ export async function POST(req: NextRequest) {
 
     const headers: Record<string, string> = {
       "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+      "Origin": "https://dosensadasd-tbc-detection-api.hf.space",
+      "Referer": "https://dosensadasd-tbc-detection-api.hf.space/",
     };
 
     if (process.env.HF_ACCESS_TOKEN) {

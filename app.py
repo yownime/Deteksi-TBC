@@ -127,8 +127,8 @@ with gr.Blocks(title="Deteksi TBC & Grad-CAM") as demo:
 import gradio.routes
 app = gradio.routes.App.create_app(demo)
 
-# Mount the Flask app onto the Gradio FastAPI app at /api
-app.mount("/api", WSGIMiddleware(flask_app))
+# Mount the Flask app onto the Gradio FastAPI app at /flask-api
+app.mount("/flask-api", WSGIMiddleware(flask_app))
 
 # Set the patched app back to demo so demo.launch() serves it
 demo.app = app
