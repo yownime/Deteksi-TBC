@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@clerk/nextjs": "^7.5.17",
+    "@gradio/client": "^2.3.1",
     "@supabase/supabase-js": "^2.110.2",
     "lucide-react": "^1.24.0",
     "next": "16.2.10",

@@ -4,33 +4,41 @@ import spaces
 import numpy as np
 import cv2
 import gradio as gr
-from fastapi import FastAPI
-from fastapi.middleware.wsgi import WSGIMiddleware
 
-# Insert backend directory to python path for internal imports inside backend
+# Add backend to path so we can import gradcam utility functions
 backend_dir = os.path.join(os.path.dirname(__file__), "backend")
 sys.path.insert(0, backend_dir)
 
-# Import backend/app.py dynamically under a custom module name to avoid conflicts with this file (app.py)
-import importlib.util
-backend_app_path = os.path.join(backend_dir, "app.py")
-spec = importlib.util.spec_from_file_location("backend_app", backend_app_path)
-backend_app = importlib.util.module_from_spec(spec)
-sys.modules["backend_app"] = backend_app
-spec.loader.exec_module(backend_app)
-
-flask_app = backend_app.app
-
-# FastAPI app is initialized below after Gradio demo is defined
+model = None
 
 # Define Gradio prediction logic using backend functions (ZeroGPU decorated)
 @spaces.GPU
 def predict_tbc(image):
-    # Load model dynamically inside the GPU context
-    local_model = backend_app.load_model_lazy()
-    if local_model is None:
-        return "Model could not be loaded on server. Please check startup logs.", None, None
-        
+    global model
+    if model is None:
+        import tensorflow as tf
+        import keras
+
+        # Monkey-patch Keras to support loading models saved in newer Keras versions (like 3.15.0) on older Keras (like 3.12.3)
+        try:
+            original_layer_init = keras.layers.Layer.__init__
+            def patched_layer_init(self, *args, **kwargs):
+                kwargs.pop('quantization_config', None)
+                original_layer_init(self, *args, **kwargs)
+            keras.layers.Layer.__init__ = patched_layer_init
+            print("Keras Layer.__init__ successfully patched for quantization_config compatibility.")
+        except Exception as e:
+            print(f"Failed to patch Keras Layer: {e}")
+
+        MODEL_PATH = os.path.join(os.path.dirname(__file__), "model_densenet121_tbc.keras")
+        print(f"Loading model from: {MODEL_PATH}")
+        try:
+            model = tf.keras.models.load_model(MODEL_PATH)
+            print("Model loaded successfully.")
+        except Exception as e:
+            print(f"Error loading model: {e}")
+            return f"Error loading model: {str(e)}", None, None
+
     if image is None:
         return "No image provided. Please upload a chest X-ray image.", None, None
 
@@ -47,7 +55,7 @@ def predict_tbc(image):
         img_array = np.expand_dims(img_normalized, axis=0)
 
         # Run prediction
-        preds = local_model.predict(img_array)
+        preds = model.predict(img_array)
         raw_probability = float(preds[0][0])
 
         if raw_probability > 0.5:
@@ -59,7 +67,7 @@ def predict_tbc(image):
 
         # Import gradcam logic to generate overlays
         from gradcam import get_gradcam_heatmap
-        heatmap = get_gradcam_heatmap(img_array, local_model, last_conv_layer_name="conv5_block16_concat")
+        heatmap = get_gradcam_heatmap(img_array, model, last_conv_layer_name="conv5_block16_concat")
 
         # Resize heatmap to match the original image dimensions
         heatmap_resized = cv2.resize(heatmap, (original_w, original_h))
@@ -104,16 +112,5 @@ with gr.Blocks(title="Deteksi TBC & Grad-CAM") as demo:
         outputs=[output_text, output_heatmap, output_overlay]
     )
 
-# 1. Initialize FastAPI app
-app = FastAPI()
-
-# 2. Mount the Flask app onto the FastAPI app at /flask-api
-app.mount("/flask-api", WSGIMiddleware(flask_app))
-
-# 3. Mount the Gradio app to the FastAPI app at root (/)
-app = gr.mount_gradio_app(app, demo, path="/")
-
 if __name__ == '__main__':
-    import uvicorn
-    port = int(os.environ.get('PORT', 7860))
-    uvicorn.run(app, host="0.0.0.0", port=port)
+    demo.launch()
