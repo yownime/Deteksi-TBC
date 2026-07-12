@@ -1,5 +1,4 @@
 import numpy as np
-import tensorflow as tf
 import cv2
 import base64
 from io import BytesIO
@@ -9,6 +8,7 @@ def get_gradcam_heatmap(img_array, model, last_conv_layer_name="conv5_block16_co
     """
     Computes the Grad-CAM heatmap for a given input image array and Keras model.
     """
+    import tensorflow as tf
     # Create a model that maps the inputs to the last conv layer output and predictions
     grad_model = tf.keras.models.Model(
         inputs=[model.inputs],
