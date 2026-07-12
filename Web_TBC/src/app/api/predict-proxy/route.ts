@@ -58,12 +58,13 @@ export async function POST(req: NextRequest) {
     // Call the named predict_tbc endpoint
     const result = await app.predict("/predict_tbc", [image]);
 
-    if (!result || !result.data || result.data.length < 3) {
+    const dataArray = result.data as any;
+    if (!result || !dataArray || !Array.isArray(dataArray) || dataArray.length < 3) {
       throw new Error("Invalid response schema received from Gradio API");
     }
 
     // 1. Parse text diagnosis results
-    const text = result.data[0] as string;
+    const text = dataArray[0] as string;
     const label = text.includes("Diagnosis: Tuberculosis") ? "Tuberculosis" : "Normal";
     
     const confidenceMatch = text.match(/Confidence:\s*([\d\.]+)%/);
@@ -85,8 +86,8 @@ export async function POST(req: NextRequest) {
     };
 
     // 2. Fetch and convert result images to base64 to match PredictionResult structure
-    const heatmap_image = await convertGradioFileToBase64(result.data[1]);
-    const superimposed_image = await convertGradioFileToBase64(result.data[2]);
+    const heatmap_image = await convertGradioFileToBase64(dataArray[1]);
+    const superimposed_image = await convertGradioFileToBase64(dataArray[2]);
 
     console.log("Gradio proxy analysis completed successfully!");
 
