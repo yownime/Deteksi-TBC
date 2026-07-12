@@ -131,6 +131,10 @@ def patched_create_app(*args, **kwargs):
     app = original_create_app(*args, **kwargs)
     from fastapi.middleware.wsgi import WSGIMiddleware
     app.mount("/flask-api", WSGIMiddleware(flask_app))
+    # Move the mounted route to the front of the route list to bypass Gradio's wildcard router
+    if len(app.routes) > 0:
+        mount_route = app.routes.pop()
+        app.routes.insert(0, mount_route)
     print("Flask app successfully mounted on Gradio FastAPI app at /flask-api via monkey-patch.")
     return app
 
