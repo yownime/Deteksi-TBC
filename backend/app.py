@@ -1,5 +1,4 @@
 import os
-import tensorflow as tf
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 from gradcam import process_and_predict
@@ -18,6 +17,20 @@ model_loaded = False
 def load_model_lazy():
     global model, model_loaded
     if model is None:
+        import tensorflow as tf
+        import keras
+        
+        # Monkey-patch Keras to support loading models saved in newer Keras versions (like 3.15.0) on older Keras (like 3.12.3)
+        try:
+            original_layer_init = keras.layers.Layer.__init__
+            def patched_layer_init(self, *args, **kwargs):
+                kwargs.pop('quantization_config', None)
+                original_layer_init(self, *args, **kwargs)
+            keras.layers.Layer.__init__ = patched_layer_init
+            print("Keras Layer.__init__ successfully patched for quantization_config compatibility.")
+        except Exception as e:
+            print(f"Failed to patch Keras Layer: {e}")
+
         print(f"Loading model from: {MODEL_PATH}")
         try:
             model = tf.keras.models.load_model(MODEL_PATH)

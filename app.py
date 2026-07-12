@@ -2,25 +2,6 @@ import os
 import sys
 import spaces
 import numpy as np
-import tensorflow as tf
-import keras
-
-# Monkey-patch Keras to support loading models saved in newer Keras versions (like 3.15.0) on older Keras (like 3.12.3)
-try:
-    original_layer_init = keras.layers.Layer.__init__
-    def patched_layer_init(self, *args, **kwargs):
-        kwargs.pop('quantization_config', None)
-        original_layer_init(self, *args, **kwargs)
-    keras.layers.Layer.__init__ = patched_layer_init
-    print("Keras Layer.__init__ successfully patched for quantization_config compatibility.")
-except Exception as e:
-    print(f"Failed to patch Keras Layer: {e}")
-
-print("--- DEBUG INFO ---")
-print("HUGGINGFACE TENSORFLOW VERSION:", tf.__version__)
-print("HUGGINGFACE KERAS VERSION:", keras.__version__)
-print("HUGGINGFACE KERAS PATH:", keras.__file__)
-print("------------------")
 import cv2
 import gradio as gr
 from fastapi import FastAPI
