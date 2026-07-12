@@ -123,15 +123,18 @@ with gr.Blocks(title="Deteksi TBC & Grad-CAM") as demo:
         outputs=[output_text, output_heatmap, output_overlay]
     )
 
-# Initialize Gradio routes and get the FastAPI application instance
+# Monkey-patch Gradio to automatically mount the Flask app on the FastAPI instance created during launch
 import gradio.routes
-app = gradio.routes.App.create_app(demo)
+original_create_app = gradio.routes.App.create_app
 
-# Mount the Flask app onto the Gradio FastAPI app at /flask-api
-app.mount("/flask-api", WSGIMiddleware(flask_app))
+def patched_create_app(*args, **kwargs):
+    app = original_create_app(*args, **kwargs)
+    from fastapi.middleware.wsgi import WSGIMiddleware
+    app.mount("/flask-api", WSGIMiddleware(flask_app))
+    print("Flask app successfully mounted on Gradio FastAPI app at /flask-api via monkey-patch.")
+    return app
 
-# Set the patched app back to demo so demo.launch() serves it
-demo.app = app
+gradio.routes.App.create_app = patched_create_app
 
 if __name__ == '__main__':
     demo.launch()
