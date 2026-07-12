@@ -16,8 +16,17 @@ export async function POST(req: NextRequest) {
     const backendFormData = new FormData();
     backendFormData.append("image", image);
 
+    const headers: Record<string, string> = {
+      "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+    };
+
+    if (process.env.HF_ACCESS_TOKEN) {
+      headers["Authorization"] = `Bearer ${process.env.HF_ACCESS_TOKEN}`;
+    }
+
     const response = await fetch(`${flaskUrl}/predict-gradcam`, {
       method: "POST",
+      headers: headers,
       body: backendFormData,
     });
 
