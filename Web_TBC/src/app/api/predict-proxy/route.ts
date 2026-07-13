@@ -51,9 +51,13 @@ export async function POST(req: NextRequest) {
             { status: 400 }
           );
         }
-      } catch (geminiError) {
+      } catch (geminiError: any) {
         console.error("Gemini validation error:", geminiError);
-        // Continue to main pipeline if Gemini fails, to avoid blocking the app completely
+        // FOR DEBUGGING: Return the error so we can see why it failed
+        return NextResponse.json(
+          { error: `Gagal memvalidasi gambar dengan Gemini: ${geminiError.message || "Unknown error"}. Pastikan API Key valid dan server telah di-restart.` },
+          { status: 500 }
+        );
       }
     }
     // --------------------------------------------
