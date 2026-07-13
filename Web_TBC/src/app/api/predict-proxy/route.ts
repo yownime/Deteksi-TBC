@@ -12,38 +12,32 @@ export async function POST(req: NextRequest) {
 
     const flaskUrl = process.env.NEXT_PUBLIC_FLASK_API_URL || "http://localhost:5000";
 
-    // --- Gemini Anomaly Detection (OOD Check) ---
-    if (process.env.GEMINI_API_KEY) {
+    // --- Groq Anomaly Detection (OOD Check) ---
+    if (process.env.GROQ_API_KEY) {
       try {
-        console.log("Validating image with Gemini Vision...");
-        const { GoogleGenAI } = await import('@google/genai');
-        const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+        console.log("Validating image with Groq Vision (Llama 4 Scout)...");
+        const Groq = (await import('groq-sdk')).default;
+        const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
         
         const imageArrayBuffer = await image.arrayBuffer();
         const base64Image = Buffer.from(imageArrayBuffer).toString('base64');
+        const mimeType = image.type || 'image/jpeg';
         
-        const response = await ai.models.generateContent({
-          model: 'gemini-3.5-flash',
-          contents: [
+        const chatCompletion = await groq.chat.completions.create({
+          messages: [
             {
-              role: 'user',
-              parts: [
-                {
-                  inlineData: {
-                    data: base64Image,
-                    mimeType: image.type || 'image/jpeg'
-                  }
-                },
-                {
-                  text: "Apakah gambar ini adalah gambar rontgen dada (chest X-ray) medis? Jawab HANYA dengan kata 'YA' atau 'TIDAK'."
-                }
+              role: "user",
+              content: [
+                { type: "text", text: "Apakah gambar ini adalah gambar rontgen dada (chest X-ray) medis? Jawab HANYA dengan kata 'YA' atau 'TIDAK'." },
+                { type: "image_url", image_url: { url: `data:${mimeType};base64,${base64Image}` } }
               ]
             }
-          ]
+          ],
+          model: "llama-4-scout" // Jika error, ganti dengan llama-3.2-90b-vision-preview
         });
         
-        const textResponse = response.text?.trim().toUpperCase() || "";
-        console.log("Gemini validation result:", textResponse);
+        const textResponse = chatCompletion.choices[0]?.message?.content?.trim().toUpperCase() || "";
+        console.log("Groq validation result:", textResponse);
         
         if (textResponse.includes("TIDAK")) {
           return NextResponse.json(
@@ -51,16 +45,18 @@ export async function POST(req: NextRequest) {
             { status: 400 }
           );
         }
-      } catch (geminiError: any) {
-        console.error("Gemini validation error:", geminiError);
-        // FOR DEBUGGING: Return the error so we can see why it failed
+      } catch (groqError: any) {
+        console.error("Groq validation error:", groqError);
+        
+        const errMsg = groqError.message || "";
+        // Tampilkan pesan error di layar jika model tidak dikenali atau server sibuk
         return NextResponse.json(
-          { error: `Gagal memvalidasi gambar dengan Gemini: ${geminiError.message || "Unknown error"}. Pastikan API Key valid dan server telah di-restart.` },
+          { error: `Groq Error: ${errMsg}. Pastikan nama model (llama-4-scout) benar dan server sudah di-restart.` },
           { status: 500 }
         );
       }
     }
-    // --------------------------------------------
+    // ------------------------------------------
 
     // Check if we are running in local offline development
     const isLocal = flaskUrl.includes("localhost") || flaskUrl.includes("127.0.0.1") || flaskUrl.includes("192.168.");
