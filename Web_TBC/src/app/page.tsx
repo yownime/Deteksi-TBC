@@ -123,7 +123,7 @@ export default function Home() {
     setLoadingProgress(10);
 
     try {
-      setLoadingStep("Menghubungi server AI (Hugging Face)...");
+      setLoadingStep("Memvalidasi citra X-Ray & menghubungi server AI...");
       setLoadingProgress(25);
 
       const formData = new FormData();

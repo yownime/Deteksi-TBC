@@ -11,7 +11,53 @@ export async function POST(req: NextRequest) {
     }
 
     const flaskUrl = process.env.NEXT_PUBLIC_FLASK_API_URL || "http://localhost:5000";
-    
+
+    // --- Gemini Anomaly Detection (OOD Check) ---
+    if (process.env.GEMINI_API_KEY) {
+      try {
+        console.log("Validating image with Gemini Vision...");
+        const { GoogleGenAI } = await import('@google/genai');
+        const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+        
+        const imageArrayBuffer = await image.arrayBuffer();
+        const base64Image = Buffer.from(imageArrayBuffer).toString('base64');
+        
+        const response = await ai.models.generateContent({
+          model: 'gemini-1.5-flash',
+          contents: [
+            {
+              role: 'user',
+              parts: [
+                {
+                  inlineData: {
+                    data: base64Image,
+                    mimeType: image.type || 'image/jpeg'
+                  }
+                },
+                {
+                  text: "Apakah gambar ini adalah gambar rontgen dada (chest X-ray) medis? Jawab HANYA dengan kata 'YA' atau 'TIDAK'."
+                }
+              ]
+            }
+          ]
+        });
+        
+        const textResponse = response.text?.trim().toUpperCase() || "";
+        console.log("Gemini validation result:", textResponse);
+        
+        if (textResponse.includes("TIDAK")) {
+          return NextResponse.json(
+            { error: "Anomali Terdeteksi: Gambar yang diunggah tidak terdeteksi sebagai rontgen dada (chest X-ray) medis yang valid." },
+            { status: 400 }
+          );
+        }
+      } catch (geminiError) {
+        console.error("Gemini validation error:", geminiError);
+        // Continue to main pipeline if Gemini fails, to avoid blocking the app completely
+      }
+    }
+    // --------------------------------------------
+
     // Check if we are running in local offline development
     const isLocal = flaskUrl.includes("localhost") || flaskUrl.includes("127.0.0.1") || flaskUrl.includes("192.168.");
     
