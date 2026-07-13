@@ -16,6 +16,7 @@ import {
   TrendingUp,
   ClipboardList,
   Clock,
+  Printer,
 } from "lucide-react";
 
 interface Prediction {
@@ -100,6 +101,178 @@ export default function HistoryPage() {
   const [filter, setFilter] = useState<FilterType>("all");
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+
+  const handlePrint = (item: Prediction) => {
+    const isTbc = item.label === "Tuberculosis";
+    const confidence = item.confidence;
+    const level = confidence >= 90 ? "Tinggi" : confidence >= 75 ? "Sedang" : "Rendah";
+    const interpretation = isTbc
+      ? confidence >= 90
+        ? "Indikasi kuat adanya pola Tuberkulosis. Segera lakukan konfirmasi dengan dokter spesialis."
+        : confidence >= 75
+        ? "Terdapat pola yang mencurigakan. Direkomendasikan segera berkonsultasi dengan dokter."
+        : "Hasil menunjukkan kemungkinan TBC, namun perlu konfirmasi lebih lanjut."
+      : confidence >= 90
+        ? "Paru-paru tampak sangat normal. Tidak ditemukan indikasi TBC yang signifikan."
+        : confidence >= 75
+        ? "Kondisi paru-paru terlihat baik. Pemeriksaan rutin tetap dianjurkan."
+        : "Hasil cenderung normal, namun tingkat keyakinan rendah. Disarankan pemeriksaan ulang.";
+    const recommendation = isTbc
+      ? "Segera lakukan pemeriksaan lebih lanjut dengan dokter spesialis paru (pulmonologi). Diperlukan pemeriksaan sputum BTA, tes Mantoux, dan/atau CT-Scan untuk konfirmasi diagnosis."
+      : "Lanjutkan pola hidup sehat. Pemeriksaan rutin tiap 6–12 bulan dianjurkan, terutama jika ada riwayat kontak dengan penderita TBC.";
+
+    const printWindow = window.open("", "_blank", "width=900,height=700");
+    if (!printWindow) return;
+
+    printWindow.document.write(`
+      <!DOCTYPE html>
+      <html lang="id">
+      <head>
+        <meta charset="UTF-8" />
+        <title>Laporan Pemeriksaan TBC — ${formatDate(item.created_at)}</title>
+        <style>
+          @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap');
+          * { box-sizing: border-box; margin: 0; padding: 0; }
+          body { font-family: 'Inter', Arial, sans-serif; color: #14532d; background: #fff; padding: 32px; }
+          .header { display: flex; align-items: center; gap: 12px; margin-bottom: 24px; padding-bottom: 16px; border-bottom: 2px solid #bbf7d0; }
+          .logo { width: 40px; height: 40px; background: linear-gradient(135deg, #16a34a, #15803d); border-radius: 10px; display: flex; align-items: center; justify-content: center; }
+          .logo svg { width: 22px; height: 22px; fill: white; }
+          .brand { font-size: 20px; font-weight: 800; color: #15803d; }
+          .brand span { display: block; font-size: 11px; font-weight: 500; color: #4ade80; }
+          .report-title { font-size: 13px; color: #166534; margin-left: auto; text-align: right; }
+          .report-title strong { display: block; font-size: 15px; font-weight: 700; }
+
+          .result-box { border-radius: 12px; padding: 16px 20px; margin-bottom: 20px; border: 2px solid; }
+          .result-box.normal { background: #f0fdf4; border-color: #86efac; }
+          .result-box.tbc { background: #fef2f2; border-color: #fca5a5; }
+          .result-label { font-size: 22px; font-weight: 800; margin-bottom: 4px; }
+          .result-label.normal { color: #166534; }
+          .result-label.tbc { color: #991b1b; }
+          .result-sub { font-size: 13px; color: #374151; }
+
+          .metrics { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 20px; }
+          .metric { background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 10px; padding: 12px; text-align: center; }
+          .metric-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: #16a34a; margin-bottom: 4px; }
+          .metric-value { font-size: 20px; font-weight: 800; color: #14532d; }
+
+          .bar-track { height: 10px; border-radius: 999px; background: #dcfce7; margin-bottom: 20px; overflow: hidden; }
+          .bar-fill { height: 100%; border-radius: 999px; }
+          .bar-fill.normal { background: linear-gradient(90deg, #22c55e, #16a34a); }
+          .bar-fill.tbc { background: linear-gradient(90deg, #f87171, #dc2626); }
+
+          .info-box { border-radius: 10px; padding: 14px; margin-bottom: 20px; }
+          .info-box.interp { background: #f0fdf4; border: 1px solid #bbf7d0; }
+          .info-box.rec { background: #eff6ff; border: 1px solid #bfdbfe; }
+          .info-title { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 6px; }
+          .info-title.interp { color: #16a34a; }
+          .info-title.rec { color: #1d4ed8; }
+          .info-text { font-size: 13px; line-height: 1.6; color: #374151; }
+
+          .images-title { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: #16a34a; margin-bottom: 12px; }
+          .images { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 20px; }
+          .image-wrap { text-align: center; }
+          .image-wrap img { width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 10px; border: 1px solid #bbf7d0; background: #0f172a; }
+          .image-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: #16a34a; margin-top: 6px; }
+
+          .disclaimer { border: 1px solid #fde68a; background: #fffbeb; border-radius: 10px; padding: 12px; margin-bottom: 16px; }
+          .disclaimer p { font-size: 11px; color: #92400e; line-height: 1.6; }
+          .footer { text-align: center; font-size: 11px; color: #6b7280; padding-top: 16px; border-top: 1px solid #dcfce7; }
+
+          @media print {
+            body { padding: 20px; }
+            @page { margin: 1cm; }
+          }
+        </style>
+      </head>
+      <body>
+        <div class="header">
+          <div class="logo">
+            <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+              <path d="M7 4.5C4 6 2 9 2 13c0 4.5 3 6.5 5 7h3v-2.5c0-1.5-1-2-1.5-3.5S8.5 11 10 9V5c-1 0-2-.2-3-.5z" opacity="0.8"/>
+              <path d="M17 4.5C20 6 22 9 22 13c0 4.5-3 6.5-5 7h-3v-2.5c0-1.5 1-2 1.5-3.5S15.5 11 14 9V5c1 0 2-.2 3-.5z" opacity="0.8"/>
+            </svg>
+          </div>
+          <div>
+            <div class="brand">TBC Detect.AI <span>DenseNet121 · Akurasi 98.5%</span></div>
+          </div>
+          <div class="report-title">
+            <strong>Laporan Pemeriksaan</strong>
+            ${formatDate(item.created_at)}
+          </div>
+        </div>
+
+        <div class="result-box ${isTbc ? 'tbc' : 'normal'}">
+          <div class="result-label ${isTbc ? 'tbc' : 'normal'}">
+            ${isTbc ? '⚠️ Terdeteksi Tuberkulosis (TBC)' : '✅ Hasil Normal'}
+          </div>
+          <div class="result-sub">Keyakinan Model: <strong>${confidence}%</strong> (Tingkat Keyakinan: ${level})</div>
+        </div>
+
+        <div class="metrics">
+          <div class="metric">
+            <div class="metric-label">Confidence Score</div>
+            <div class="metric-value">${confidence}%</div>
+          </div>
+          <div class="metric">
+            <div class="metric-label">Raw Probability</div>
+            <div class="metric-value">${(item.raw_probability * 100).toFixed(1)}%</div>
+          </div>
+          <div class="metric">
+            <div class="metric-label">Prediksi Model</div>
+            <div class="metric-value" style="font-size:14px; color: ${isTbc ? '#991b1b' : '#166534'}">${item.label}</div>
+          </div>
+        </div>
+
+        <div class="bar-track">
+          <div class="bar-fill ${isTbc ? 'tbc' : 'normal'}" style="width:${confidence}%"></div>
+        </div>
+
+        <div class="info-box interp">
+          <div class="info-title interp">📊 Interpretasi Hasil</div>
+          <div class="info-text">${interpretation}</div>
+        </div>
+
+        <div class="info-box rec">
+          <div class="info-title rec">💡 Rekomendasi Tindak Lanjut</div>
+          <div class="info-text">${recommendation}</div>
+        </div>
+
+        <div class="images-title">🔬 Visualisasi Grad-CAM (Explainable AI)</div>
+        <div class="images">
+          <div class="image-wrap">
+            <img src="${item.original_image_url}" alt="Citra Asli" />
+            <div class="image-label">Citra Rontgen Asli</div>
+          </div>
+          <div class="image-wrap">
+            ${item.heatmap_image_url
+              ? `<img src="${item.heatmap_image_url}" alt="Heatmap" />`
+              : `<div style="aspect-ratio:1;background:#dcfce7;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:12px;color:#16a34a">Tidak tersedia</div>`
+            }
+            <div class="image-label">Heatmap Grad-CAM</div>
+          </div>
+          <div class="image-wrap">
+            ${item.superimposed_image_url
+              ? `<img src="${item.superimposed_image_url}" alt="Superimpose" />`
+              : `<div style="aspect-ratio:1;background:#dcfce7;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:12px;color:#16a34a">Tidak tersedia</div>`
+            }
+            <div class="image-label">Hasil Superimpose</div>
+          </div>
+        </div>
+
+        <div class="disclaimer">
+          <p><strong>⚠️ Disclaimer Medis:</strong> Hasil analisis dari aplikasi AI ini merupakan alat bantu skrining awal dan <strong>bukan diagnosis medis final</strong>. Aplikasi ini tidak menggantikan konsultasi dari dokter spesialis radiologi atau pulmonologi. Selalu konsultasikan hasil dengan tenaga medis profesional.</p>
+        </div>
+
+        <div class="footer">
+          © ${new Date().getFullYear()} TBC Detect AI — Sistem Klasifikasi Rontgen Thorax · Dicetak pada ${new Date().toLocaleDateString('id-ID', { weekday:'long', year:'numeric', month:'long', day:'numeric' })}
+        </div>
+
+        <script>window.onload = () => { window.print(); }<\/script>
+      </body>
+      </html>
+    `);
+    printWindow.document.close();
+  };
 
   const fetchPredictions = async () => {
     setIsLoading(true);
@@ -457,11 +630,20 @@ export default function HistoryPage() {
                       </div>
                     </div>
 
-                    {/* Images */}
-                    <h4 className="text-[10px] font-bold uppercase tracking-wider text-green-600 mb-3 flex items-center gap-1.5">
-                      <TrendingUp className="h-3.5 w-3.5" />
-                      Visualisasi Grad-CAM
-                    </h4>
+                    {/* Print + Images header */}
+                    <div className="flex items-center justify-between mb-3">
+                      <h4 className="text-[10px] font-bold uppercase tracking-wider text-green-600 flex items-center gap-1.5">
+                        <TrendingUp className="h-3.5 w-3.5" />
+                        Visualisasi Grad-CAM
+                      </h4>
+                      <button
+                        onClick={() => handlePrint(item)}
+                        className="inline-flex items-center gap-1.5 rounded-lg border border-green-200 bg-white px-3 py-1.5 text-xs font-bold text-green-700 hover:bg-green-50 hover:border-green-300 transition shadow-sm"
+                      >
+                        <Printer className="h-3.5 w-3.5" />
+                        Print Laporan
+                      </button>
+                    </div>
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                       {[
                         { url: item.original_image_url, label: "Citra Asli" },
