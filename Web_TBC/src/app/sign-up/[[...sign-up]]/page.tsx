@@ -53,10 +53,6 @@ export default function Page() {
               variables: {
                 colorPrimary: "#16a34a",
                 colorBackground: "#ffffff",
-                colorText: "#14532d",
-                colorTextSecondary: "#166534",
-                colorInputBackground: "#f0fdf4",
-                colorInputText: "#14532d",
                 borderRadius: "12px",
                 fontFamily: "Inter, sans-serif",
               },
