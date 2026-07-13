@@ -33,7 +33,7 @@ export async function POST(req: NextRequest) {
               ]
             }
           ],
-          model: "llama-3.2-11b-vision-preview"
+          model: "meta-llama/llama-4-scout-17b-16e-instruct"
         });
         
         const textResponse = chatCompletion.choices[0]?.message?.content?.trim().toUpperCase() || "";
