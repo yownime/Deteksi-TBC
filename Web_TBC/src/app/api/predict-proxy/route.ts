@@ -39,12 +39,16 @@ export async function POST(req: NextRequest) {
         });
         
         const textResponse = chatCompletion.choices[0]?.message?.content?.trim().toUpperCase() || "";
-        console.log("Groq validation result:", textResponse);
+        console.log("Groq validation result (raw):", textResponse);
         
-        // Deteksi gagal jika response mengandung INVALID, atau sama sekali tidak mengandung kata VALID
-        if (textResponse.includes("INVALID") || !textResponse.includes("VALID")) {
+        // Hapus blok <THINK>...</THINK> karena model Qwen suka menyebutkan kata INVALID saat sedang berpikir
+        const cleanResponse = textResponse.replace(/<THINK>[\s\S]*?<\/THINK>/g, "").trim();
+        console.log("Groq validation result (cleaned):", cleanResponse);
+        
+        // Deteksi gagal jika response yang sudah dibersihkan mengandung INVALID, atau sama sekali tidak mengandung kata VALID
+        if (cleanResponse.includes("INVALID") || !cleanResponse.includes("VALID")) {
           return NextResponse.json(
-            { error: `Anomali Terdeteksi. AI menjawab: "${textResponse}". Harap pastikan ini adalah rontgen dada.` },
+            { error: `Anomali Terdeteksi. AI menjawab: "${cleanResponse || textResponse}". Harap pastikan ini adalah rontgen dada.` },
             { status: 400 }
           );
         }
