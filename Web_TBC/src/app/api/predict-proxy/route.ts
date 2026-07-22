@@ -28,7 +28,7 @@ export async function POST(req: NextRequest) {
             {
               role: "user",
               content: [
-                { type: "text", text: "Is this image a medical chest X-ray? Reply exactly with the word 'VALID' if it is a chest X-ray, or 'INVALID' if it is not. Do not provide any other explanation or text." },
+                { type: "text", text: "You are a computer vision image classifier. Classify this image. If it is a chest x-ray, output exactly 'VALID'. If it is not a chest x-ray, output exactly 'INVALID'. Do not include any other text, warnings, or explanations." },
                 { type: "image_url", image_url: { url: `data:${mimeType};base64,${base64Image}` } }
               ]
             }
@@ -44,7 +44,7 @@ export async function POST(req: NextRequest) {
         // Deteksi gagal jika response mengandung INVALID, atau sama sekali tidak mengandung kata VALID
         if (textResponse.includes("INVALID") || !textResponse.includes("VALID")) {
           return NextResponse.json(
-            { error: "Anomali Terdeteksi: Gambar yang diunggah tidak terdeteksi sebagai rontgen dada (chest X-ray) medis yang valid." },
+            { error: `Anomali Terdeteksi. AI menjawab: "${textResponse}". Harap pastikan ini adalah rontgen dada.` },
             { status: 400 }
           );
         }
