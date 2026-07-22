@@ -33,7 +33,7 @@ export async function POST(req: NextRequest) {
               ]
             }
           ],
-          model: "meta-llama/llama-4-scout-17b-16e-instruct"
+          model: "llama-3.2-90b-vision-preview"
         });
         
         const textResponse = chatCompletion.choices[0]?.message?.content?.trim().toUpperCase() || "";
@@ -51,7 +51,7 @@ export async function POST(req: NextRequest) {
         const errMsg = groqError.message || "";
         // Tampilkan pesan error di layar jika model tidak dikenali atau server sibuk
         return NextResponse.json(
-          { error: `Groq Error: ${errMsg}. Pastikan nama model (llama-4-scout) benar dan server sudah di-restart.` },
+          { error: `Groq Error: ${errMsg}. Pastikan nama model (llama-3.2-90b-vision-preview) benar dan API Key valid.` },
           { status: 500 }
         );
       }
