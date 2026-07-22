@@ -35,7 +35,7 @@ export async function POST(req: NextRequest) {
           ],
           model: "qwen/qwen3.6-27b",
           temperature: 0.1, // Rendahkan temperature agar respons lebih konsisten
-          max_tokens: 10
+          max_tokens: 1024 // Beri token lebih banyak karena model Qwen melakukan <think> terlebih dahulu
         });
         
         const textResponse = chatCompletion.choices[0]?.message?.content?.trim().toUpperCase() || "";
